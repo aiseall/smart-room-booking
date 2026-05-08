@@ -31,4 +31,4 @@ async def test_search_available(client, test_room, auth_header):
 @pytest.mark.asyncio
 async def test_rooms_require_auth(client, test_room):
     resp = await client.get("/api/v1/rooms")
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)

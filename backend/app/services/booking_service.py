@@ -106,16 +106,20 @@ async def get_booking_by_id(db: AsyncSession, booking_id: str) -> Booking | None
     return result.scalar_one_or_none()
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 async def cancel_booking(db: AsyncSession, booking: Booking) -> None:
     booking.status = "cancelled"
-    booking.updated_at = datetime.now(timezone.utc)
+    booking.updated_at = _utcnow()
     await db.commit()
 
 
 async def check_in_booking(db: AsyncSession, booking: Booking) -> None:
     if booking.status != "confirmed":
         raise HTTPException(status_code=400, detail=f"Cannot check in: booking status is '{booking.status}'")
-    now = datetime.now(timezone.utc)
+    now = _utcnow()
     if now < booking.start_time - timedelta(minutes=10):
         raise HTTPException(status_code=400, detail="Too early to check in (max 10 minutes before start)")
 
@@ -127,7 +131,7 @@ async def check_in_booking(db: AsyncSession, booking: Booking) -> None:
 
 
 async def auto_release_no_shows(db: AsyncSession) -> int:
-    now = datetime.now(timezone.utc)
+    now = _utcnow()
     grace_cutoff = now - timedelta(minutes=settings.AUTO_RELEASE_MINUTES)
 
     result = await db.execute(
