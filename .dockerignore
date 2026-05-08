@@ -1,0 +1,16 @@
+.git
+.github
+.specify
+specs
+*.md
+__pycache__
+*.pyc
+.venv
+node_modules
+.env
+htmlcov
+.pytest_cache
+.ruff_cache
+.coverage
+*.db
+data/
