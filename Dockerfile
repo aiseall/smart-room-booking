@@ -4,7 +4,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
-RUN npm run build
+RUN npx tsc && npx vite build
 
 # Stage 2: Production
 FROM python:3.12-slim AS production
