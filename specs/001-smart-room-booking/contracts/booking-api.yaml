@@ -1,0 +1,338 @@
+openapi: 3.0.3
+info:
+  title: Smart Room Booking API
+  version: 1.0.0
+  description: Meeting room booking system API
+
+servers:
+  - url: /api/v1
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: 1.0.0
+
+  /auth/login:
+    post:
+      summary: User login
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: bearer
+        '401':
+          description: Invalid credentials
+
+  /rooms:
+    get:
+      summary: List all rooms
+      operationId: listRooms
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: query
+          schema:
+            type: string
+            enum: [A, B, C]
+        - name: min_capacity
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Room list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+
+  /rooms/available:
+    get:
+      summary: Search available rooms
+      operationId: searchAvailableRooms
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: min_capacity
+          in: query
+          schema:
+            type: integer
+        - name: building
+          in: query
+          schema:
+            type: string
+            enum: [A, B, C]
+      responses:
+        '200':
+          description: Available rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+
+  /bookings:
+    get:
+      summary: List my bookings
+      operationId: listMyBookings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User's bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+    post:
+      summary: Create a booking
+      operationId: createBooking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          description: Conflict - room already booked for this time
+
+  /bookings/{id}:
+    delete:
+      summary: Cancel a booking
+      operationId: cancelBooking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Booking cancelled
+        '404':
+          description: Booking not found
+
+  /bookings/{id}/check-in:
+    post:
+      summary: Check in to a booking
+      operationId: checkIn
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Checked in successfully
+        '400':
+          description: Cannot check in (wrong status or too early)
+
+  /admin/rooms:
+    post:
+      summary: Create a room (admin only)
+      operationId: createRoom
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomCreate'
+      responses:
+        '201':
+          description: Room created
+        '403':
+          description: Not authorized
+
+  /admin/utilization:
+    get:
+      summary: Get utilization metrics (admin only)
+      operationId: getUtilization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: building
+          in: query
+          schema:
+            type: string
+            enum: [A, B, C]
+      responses:
+        '200':
+          description: Utilization metrics
+        '403':
+          description: Not authorized
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        building:
+          type: string
+        floor:
+          type: integer
+        capacity:
+          type: integer
+        equipment:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+
+    RoomCreate:
+      type: object
+      required: [name, building, floor, capacity]
+      properties:
+        name:
+          type: string
+        building:
+          type: string
+          enum: [A, B, C]
+        floor:
+          type: integer
+        capacity:
+          type: integer
+        equipment:
+          type: array
+          items:
+            type: string
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [confirmed, checked_in, completed, cancelled, no_show, auto_released]
+        room:
+          $ref: '#/components/schemas/Room'
+
+    BookingCreate:
+      type: object
+      required: [room_id, start_time, end_time, title]
+      properties:
+        room_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        title:
+          type: string
+        recurrence_rule:
+          type: string
+          description: "RRULE string for recurring bookings"
