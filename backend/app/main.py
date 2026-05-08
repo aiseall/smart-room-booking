@@ -12,6 +12,7 @@ from app.core.db import engine
 from app.models import Base
 from app.services.booking_service import auto_release_no_shows
 from app.core.db import async_session
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +29,22 @@ async def _auto_release_loop():
         await asyncio.sleep(settings.AUTO_RELEASE_CHECK_INTERVAL)
 
 
+async def _seed_if_empty():
+    from sqlalchemy import select, func
+    async with async_session() as db:
+        result = await db.execute(select(func.count()).select_from(User))
+        if result.scalar() == 0:
+            logger.info("Empty database detected, running seed...")
+            from app.scripts.seed import seed
+            await seed()
+            logger.info("Seed complete.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await _seed_if_empty()
     task = asyncio.create_task(_auto_release_loop())
     yield
     task.cancel()
