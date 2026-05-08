@@ -2,9 +2,9 @@
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci && chmod -R +x node_modules/.bin/
 COPY frontend/ ./
-RUN npx tsc && npx vite build
+RUN npm run build
 
 # Stage 2: Production
 FROM python:3.12-slim AS production
