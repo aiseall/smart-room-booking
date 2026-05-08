@@ -1,0 +1,55 @@
+{
+  "app": {
+    "title": "Smart Room Booking",
+    "login": "Login",
+    "logout": "Logout",
+    "search": "Room Search",
+    "myBookings": "My Bookings",
+    "admin": "Admin Dashboard"
+  },
+  "login": {
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign In",
+    "error": "Invalid credentials"
+  },
+  "search": {
+    "title": "Find Available Rooms",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "minCapacity": "Min Capacity",
+    "building": "Building",
+    "allBuildings": "All Buildings",
+    "searchBtn": "Search",
+    "noRooms": "No rooms available for the selected criteria",
+    "book": "Book",
+    "capacity": "Capacity",
+    "equipment": "Equipment",
+    "floor": "Floor"
+  },
+  "booking": {
+    "title": "Meeting Title",
+    "create": "Create Booking",
+    "cancel": "Cancel",
+    "checkIn": "Check In",
+    "status": "Status",
+    "confirmed": "Confirmed",
+    "checked_in": "Checked In",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "no_show": "No Show",
+    "auto_released": "Auto Released",
+    "conflict": "This room is already booked for the selected time",
+    "success": "Booking created successfully",
+    "noBookings": "You have no bookings"
+  },
+  "admin": {
+    "title": "Utilization Dashboard",
+    "totalBookings": "Total Bookings",
+    "noShows": "No Shows",
+    "utilization": "Utilization",
+    "room": "Room",
+    "building": "Building",
+    "period": "Period"
+  }
+}
