@@ -8,11 +8,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.db import engine
+from app.core.db import async_session, engine
 from app.models import Base
-from app.services.booking_service import auto_release_no_shows
-from app.core.db import async_session
 from app.models.user import User
+from app.services.booking_service import auto_release_no_shows
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ async def _auto_release_loop():
 
 
 async def _seed_if_empty():
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
     async with async_session() as db:
         result = await db.execute(select(func.count()).select_from(User))
         if result.scalar() == 0:

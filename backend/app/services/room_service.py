@@ -1,7 +1,7 @@
 import json
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.booking import Booking
@@ -14,7 +14,7 @@ async def list_rooms(
     building: str | None = None,
     min_capacity: int | None = None,
 ) -> list[Room]:
-    query = select(Room).where(Room.is_active == True)
+    query = select(Room).where(Room.is_active)
     if building:
         query = query.where(Room.building == building)
     if min_capacity:
@@ -41,7 +41,7 @@ async def search_available_rooms(
         .scalar_subquery()
     )
 
-    query = select(Room).where(Room.is_active == True, Room.id.not_in(booked_room_ids))
+    query = select(Room).where(Room.is_active, Room.id.not_in(booked_room_ids))
     if building:
         query = query.where(Room.building == building)
     if min_capacity:
@@ -79,7 +79,7 @@ async def get_utilization(
     start_dt = datetime.combine(start_date, datetime.min.time())
     end_dt = datetime.combine(end_date, datetime.max.time())
 
-    rooms_query = select(Room).where(Room.is_active == True)
+    rooms_query = select(Room).where(Room.is_active)
     if building:
         rooms_query = rooms_query.where(Room.building == building)
     rooms_result = await db.execute(rooms_query)

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -16,7 +16,10 @@ async def create_booking(db: AsyncSession, user_id: str, data: BookingCreate) ->
 
     conflict = await _check_conflict(db, data.room_id, data.start_time, data.end_time)
     if conflict:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Room already booked for this time slot")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Room already booked for this time slot",
+        )
 
     if data.recurrence_rule:
         return await _create_recurring(db, user_id, data)
@@ -118,10 +121,16 @@ async def cancel_booking(db: AsyncSession, booking: Booking) -> None:
 
 async def check_in_booking(db: AsyncSession, booking: Booking) -> None:
     if booking.status != "confirmed":
-        raise HTTPException(status_code=400, detail=f"Cannot check in: booking status is '{booking.status}'")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot check in: booking status is '{booking.status}'",
+        )
     now = _utcnow()
     if now < booking.start_time - timedelta(minutes=10):
-        raise HTTPException(status_code=400, detail="Too early to check in (max 10 minutes before start)")
+        raise HTTPException(
+            status_code=400,
+            detail="Too early to check in (max 10 minutes before start)",
+        )
 
     booking.status = "checked_in"
     booking.updated_at = now

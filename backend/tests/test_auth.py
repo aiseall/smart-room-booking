@@ -3,7 +3,10 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_login_success(client, test_user):
-    resp = await client.post("/api/v1/auth/login", json={"username": "testuser", "password": "test123"})
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"username": "testuser", "password": "test123"},
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
@@ -12,7 +15,10 @@ async def test_login_success(client, test_user):
 
 @pytest.mark.asyncio
 async def test_login_wrong_password(client, test_user):
-    resp = await client.post("/api/v1/auth/login", json={"username": "testuser", "password": "wrong"})
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"username": "testuser", "password": "wrong"},
+    )
     assert resp.status_code == 401
 
 

@@ -1,4 +1,3 @@
-import asyncio
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -6,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.db import get_db
 from app.main import app
 from app.models import Base
-from app.models.user import User
 from app.models.room import Room
-from app.services.auth_service import hash_password, create_access_token
+from app.models.user import User
+from app.services.auth_service import create_access_token, hash_password
 
 test_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 TestSession = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)

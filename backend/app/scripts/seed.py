@@ -1,19 +1,38 @@
 import asyncio
 import json
 
-from app.core.db import engine, async_session
+from app.core.db import async_session, engine
 from app.models import Base
-from app.models.user import User
 from app.models.room import Room
+from app.models.user import User
 from app.services.auth_service import hash_password
 
-
 USERS = [
-    {"username": "alice", "email": "alice@company.com", "name": "Alice Wang", "password": "pass123", "role": "employee", "department": "Engineering"},
-    {"username": "bob", "email": "bob@company.com", "name": "Bob Li", "password": "pass123", "role": "employee", "department": "Marketing"},
-    {"username": "charlie", "email": "charlie@company.com", "name": "Charlie Chen", "password": "pass123", "role": "team_admin", "department": "Engineering"},
-    {"username": "diana", "email": "diana@company.com", "name": "Diana Zhang", "password": "pass123", "role": "facility_admin", "department": "Operations"},
-    {"username": "admin", "email": "admin@company.com", "name": "Admin User", "password": "admin123", "role": "facility_admin", "department": "IT"},
+    {
+        "username": "alice", "email": "alice@company.com",
+        "name": "Alice Wang", "password": "pass123",
+        "role": "employee", "department": "Engineering",
+    },
+    {
+        "username": "bob", "email": "bob@company.com",
+        "name": "Bob Li", "password": "pass123",
+        "role": "employee", "department": "Marketing",
+    },
+    {
+        "username": "charlie", "email": "charlie@company.com",
+        "name": "Charlie Chen", "password": "pass123",
+        "role": "team_admin", "department": "Engineering",
+    },
+    {
+        "username": "diana", "email": "diana@company.com",
+        "name": "Diana Zhang", "password": "pass123",
+        "role": "facility_admin", "department": "Operations",
+    },
+    {
+        "username": "admin", "email": "admin@company.com",
+        "name": "Admin User", "password": "admin123",
+        "role": "facility_admin", "department": "IT",
+    },
 ]
 
 BUILDINGS = {
