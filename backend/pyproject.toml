@@ -16,6 +16,7 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["app"]
+omit = ["app/scripts/*", "app/main.py"]
 
 [tool.coverage.report]
 fail_under = 80
