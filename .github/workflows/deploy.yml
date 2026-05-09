@@ -1,49 +1,116 @@
-name: Deploy to Azure Container Apps
+name: Build and Deploy
 
 on:
-  workflow_run:
-    workflows: ["CI"]
+  push:
     branches: [main]
-    types: [completed]
+  workflow_dispatch:
+
+env:
+  ACR_REGISTRY: acrsmartroombooking.azurecr.io
+  IMAGE_NAME: smart-room-booking
+  RESOURCE_GROUP: sandbox_du
+  CONTAINER_APP_NAME: ca-smart-room-booking
 
 permissions:
   contents: read
   id-token: write
 
-env:
-  ACR_NAME: acrsmartroombooking
-  ACR_LOGIN_SERVER: acrsmartroombooking.azurecr.io
-  IMAGE_NAME: smart-room-booking
-  AZURE_RESOURCE_GROUP: sandbox_du
-  AZURE_CONTAINER_APP: ca-smart-room-booking
-
 jobs:
-  deploy:
+  build:
+    name: Build & Push Image
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    environment: production
     steps:
       - uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
+      - name: Login to ACR
+        uses: docker/login-action@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build image in ACR
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    name: Deploy to Container Apps
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Azure AD token
+        id: auth
         run: |
-          az acr build \
-            --registry ${{ env.ACR_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --image ${{ env.IMAGE_NAME }}:latest \
-            .
+          TOKEN=$(curl -sf -X POST \
+            "https://login.microsoftonline.com/${{ secrets.AZURE_TENANT_ID }}/oauth2/v2.0/token" \
+            -d "grant_type=client_credentials" \
+            -d "client_id=${{ secrets.AZURE_CLIENT_ID }}" \
+            -d "client_secret=${{ secrets.AZURE_CLIENT_SECRET }}" \
+            -d "scope=https://management.azure.com/.default" \
+            | jq -r '.access_token')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::error::Failed to obtain Azure AD token"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Container App
+        id: deploy
         run: |
-          az containerapp update \
-            --name ${{ env.AZURE_CONTAINER_APP }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --revision-suffix sha-$(echo ${{ github.sha }} | cut -c1-7)
+          APP_URL="https://management.azure.com/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.App/containerApps/${{ env.CONTAINER_APP_NAME }}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "${APP_URL}?api-version=2024-03-01" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "properties": {
+                "template": {
+                  "containers": [{
+                    "name": "'"${{ env.CONTAINER_APP_NAME }}"'",
+                    "image": "'"${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"'",
+                    "resources": { "cpu": 0.5, "memory": "1Gi" },
+                    "env": [
+                      { "name": "ENVIRONMENT", "value": "production" },
+                      { "name": "JWT_SECRET", "value": "demo-secret-change-me-2026" },
+                      { "name": "DATABASE_URL", "value": "sqlite+aiosqlite:///./data/booking.db" }
+                    ]
+                  }]
+                }
+              }
+            }')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "Container App updated (HTTP $HTTP_CODE)"
+            FQDN=$(echo "$BODY" | jq -r '.properties.configuration.ingress.fqdn')
+            echo "app-url=https://$FQDN" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Deploy failed (HTTP $HTTP_CODE)"
+            echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+            exit 1
+          fi
+
+      - name: Health check
+        run: |
+          APP_URL="${{ steps.deploy.outputs.app-url }}"
+          echo "Running health check on $APP_URL/api/v1/health"
+          for i in $(seq 1 12); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/v1/health" 2>/dev/null || echo "000")
+            if [[ "$HTTP_CODE" == "200" ]]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "  HTTP $HTTP_CODE (attempt $i/12)"
+            sleep 10
+          done
+          echo "WARNING: Health check did not pass within timeout"
+          exit 1
